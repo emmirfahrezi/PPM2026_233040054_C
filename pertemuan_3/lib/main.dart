@@ -63,6 +63,34 @@ class Catatan {
   }
 }
 
+class ProfilPengguna {
+  final String nama;
+  final String email;
+  final String telepon;
+  final String bio;
+
+  const ProfilPengguna({
+    required this.nama,
+    required this.email,
+    required this.telepon,
+    required this.bio,
+  });
+
+  ProfilPengguna copyWith({
+    String? nama,
+    String? email,
+    String? telepon,
+    String? bio,
+  }) {
+    return ProfilPengguna(
+      nama: nama ?? this.nama,
+      email: email ?? this.email,
+      telepon: telepon ?? this.telepon,
+      bio: bio ?? this.bio,
+    );
+  }
+}
+
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -85,6 +113,13 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  ProfilPengguna _profil = const ProfilPengguna(
+    nama: 'Mahasiswa Flutter',
+    email: 'mahasiswa@kampus.ac.id',
+    telepon: '0812-3456-7890',
+    bio: 'Belajar membuat aplikasi Flutter yang rapi dan interaktif.',
+  );
+
   final List<Catatan> _catatan = [
     Catatan(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
@@ -112,6 +147,23 @@ class _HomePageState extends State<HomePage> {
     }
 
     return _catatan.where((c) => c.kategori == _filterKategori).toList();
+  }
+
+  Future<void> _bukaEditProfil() async {
+    final hasil = await Navigator.push<ProfilPengguna>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EditProfilePage(profilAwal: _profil),
+      ),
+    );
+
+    if (!mounted || hasil == null) return;
+
+    setState(() => _profil = hasil);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Profil "${hasil.nama}" diperbarui')),
+    );
   }
 
   Future<void> _bukaFormCatatan({Catatan? catatan}) async {
@@ -218,43 +270,152 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-      body: daftarCatatan.isEmpty
-          ? _EmptyState(
-              title: _catatan.isEmpty
-                  ? 'Belum ada catatan'
-                  : 'Tidak ada catatan kategori $_filterKategori',
-              subtitle: _catatan.isEmpty
-                  ? 'Tambahkan catatan pertama untuk mulai menyimpan ide atau tugas kuliah.'
-                  : 'Coba pilih kategori lain atau tambahkan catatan baru.',
-              onTambah: () => _bukaFormCatatan(),
-            )
-          : ListView.separated(
-              itemCount: daftarCatatan.length,
-              separatorBuilder: (_, _) => const Divider(height: 0),
-              itemBuilder: (context, i) {
-                final c = daftarCatatan[i];
-                final avatarHuruf = c.judul.trim().isEmpty
-                    ? '?'
-                    : c.judul.trim()[0].toUpperCase();
-
-                return ListTile(
-                  leading: CircleAvatar(child: Text(avatarHuruf)),
-                  title: Text(c.judul),
-                  subtitle: Text(
-                    '${c.kategori} - ${_formatTanggal(c.dibuatPada)}',
-                  ),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete_outline),
-                    tooltip: 'Hapus catatan',
-                    onPressed: () => _hapusCatatan(c.id),
-                  ),
-                  onTap: () => _bukaDetailCatatan(c),
-                );
-              },
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: _ProfileCard(
+              profil: _profil,
+              onEdit: _bukaEditProfil,
             ),
+          ),
+          Expanded(
+            child: daftarCatatan.isEmpty
+                ? _EmptyState(
+                    title: _catatan.isEmpty
+                        ? 'Belum ada catatan'
+                        : 'Tidak ada catatan kategori $_filterKategori',
+                    subtitle: _catatan.isEmpty
+                        ? 'Tambahkan catatan pertama untuk mulai menyimpan ide atau tugas kuliah.'
+                        : 'Coba pilih kategori lain atau tambahkan catatan baru.',
+                    onTambah: () => _bukaFormCatatan(),
+                  )
+                : ListView.separated(
+                    itemCount: daftarCatatan.length,
+                    separatorBuilder: (_, _) => const Divider(height: 0),
+                    itemBuilder: (context, i) {
+                      final c = daftarCatatan[i];
+                      final avatarHuruf = c.judul.trim().isEmpty
+                          ? '?'
+                          : c.judul.trim()[0].toUpperCase();
+
+                      return ListTile(
+                        leading: CircleAvatar(child: Text(avatarHuruf)),
+                        title: Text(c.judul),
+                        subtitle: Text(
+                          '${c.kategori} - ${_formatTanggal(c.dibuatPada)}',
+                        ),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.delete_outline),
+                          tooltip: 'Hapus catatan',
+                          onPressed: () => _hapusCatatan(c.id),
+                        ),
+                        onTap: () => _bukaDetailCatatan(c),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _bukaFormCatatan(),
         child: const Icon(Icons.add),
+      ),
+    );
+  }
+}
+
+class _ProfileCard extends StatelessWidget {
+  final ProfilPengguna profil;
+  final VoidCallback onEdit;
+
+  const _ProfileCard({
+    required this.profil,
+    required this.onEdit,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final inisial = profil.nama.trim().isEmpty
+        ? '?'
+        : profil.nama.trim()[0].toUpperCase();
+
+    return Card(
+      elevation: 0,
+      color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.5),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.manage_accounts_outlined,
+                  size: 20,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Edit Profil',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 24,
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                  child: Text(
+                    inisial,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        profil.nama,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(profil.email),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              profil.bio,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.phone_outlined, size: 18),
+                const SizedBox(width: 8),
+                Text(profil.telepon),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: onEdit,
+                icon: const Icon(Icons.edit_outlined),
+                label: const Text('Edit Profil'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -403,6 +564,181 @@ class _TambahCatatanPageState extends State<TambahCatatanPage> {
               onPressed: _simpan,
               icon: const Icon(Icons.save),
               label: Text(_isModeEdit ? 'Update Catatan' : 'Simpan Catatan'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class EditProfilePage extends StatefulWidget {
+  final ProfilPengguna profilAwal;
+
+  const EditProfilePage({super.key, required this.profilAwal});
+
+  @override
+  State<EditProfilePage> createState() => _EditProfilePageState();
+}
+
+class _EditProfilePageState extends State<EditProfilePage> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _namaCtrl;
+  late final TextEditingController _emailCtrl;
+  late final TextEditingController _teleponCtrl;
+  late final TextEditingController _bioCtrl;
+  final _regexEmail = RegExp(r'^[\w\.-]+@([\w-]+\.)+[A-Za-z]{2,}$');
+
+  @override
+  void initState() {
+    super.initState();
+    _namaCtrl = TextEditingController(text: widget.profilAwal.nama);
+    _emailCtrl = TextEditingController(text: widget.profilAwal.email);
+    _teleponCtrl = TextEditingController(text: widget.profilAwal.telepon);
+    _bioCtrl = TextEditingController(text: widget.profilAwal.bio);
+  }
+
+  @override
+  void dispose() {
+    _namaCtrl.dispose();
+    _emailCtrl.dispose();
+    _teleponCtrl.dispose();
+    _bioCtrl.dispose();
+    super.dispose();
+  }
+
+  void _simpan() {
+    if (!_formKey.currentState!.validate()) return;
+
+    final profilBaru = widget.profilAwal.copyWith(
+      nama: _namaCtrl.text.trim(),
+      email: _emailCtrl.text.trim(),
+      telepon: _teleponCtrl.text.trim(),
+      bio: _bioCtrl.text.trim(),
+    );
+
+    Navigator.pop(context, profilBaru);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Edit Profil')),
+      body: Form(
+        key: _formKey,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Card(
+              elevation: 0,
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 28,
+                      child: ValueListenableBuilder<TextEditingValue>(
+                        valueListenable: _namaCtrl,
+                        builder: (context, value, _) {
+                          final inisial = value.text.trim().isEmpty
+                              ? '?'
+                              : value.text.trim()[0].toUpperCase();
+                          return Text(inisial);
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Perbarui data profil untuk ditampilkan di halaman utama.',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _namaCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Nama',
+                prefixIcon: Icon(Icons.person_outline),
+                border: OutlineInputBorder(),
+              ),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Nama wajib diisi';
+                }
+                if (value.trim().length < 3) {
+                  return 'Minimal 3 karakter';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _emailCtrl,
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(
+                labelText: 'Email',
+                prefixIcon: Icon(Icons.alternate_email),
+                border: OutlineInputBorder(),
+              ),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Email wajib diisi';
+                }
+                if (!_regexEmail.hasMatch(value.trim())) {
+                  return 'Format email belum valid';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _teleponCtrl,
+              keyboardType: TextInputType.phone,
+              decoration: const InputDecoration(
+                labelText: 'Nomor telepon',
+                prefixIcon: Icon(Icons.phone_outlined),
+                border: OutlineInputBorder(),
+              ),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Nomor telepon wajib diisi';
+                }
+                if (value.trim().length < 8) {
+                  return 'Nomor telepon terlalu pendek';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _bioCtrl,
+              maxLines: 4,
+              decoration: const InputDecoration(
+                labelText: 'Bio',
+                prefixIcon: Icon(Icons.notes_outlined),
+                border: OutlineInputBorder(),
+              ),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Bio wajib diisi';
+                }
+                if (value.trim().length < 10) {
+                  return 'Bio minimal 10 karakter';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 24),
+            FilledButton.icon(
+              onPressed: _simpan,
+              icon: const Icon(Icons.save_outlined),
+              label: const Text('Simpan Profil'),
             ),
           ],
         ),
